@@ -1,32 +1,23 @@
-import React, { ChangeEvent, useState } from 'react';
+import React, { useState } from 'react';
 import carsFromServer from './api/cars';
 import colorsFromServer from './api/colors';
-
-// 2. Add ability to filter car by brand name
-// 3. Add ability to filter car by color
 
 interface Cars {
   id: number,
   brand: string,
   rentPrice: number,
   colorId: number,
-  color: Colors,
+  color: Color | undefined,
 }
 
-interface Colors {
+interface Color {
   id: number,
-  name: ColorsName,
-}
-
-enum ColorsName {
-  RED = 'red',
-  WHITE = 'white',
-  BLACK = 'black',
+  name: string,
 }
 
 export const App: React.FC = () => {
-  const carsWithColor: Cars[] = carsFromServer.map(car => {
-    const color = colorsFromServer.find(({ id }) => car.colorId === id);
+  const carWithColors: Cars[] = carsFromServer.map(car => {
+    const color = colorsFromServer.find(({ id }) => id === car.colorId);
 
     return {
       ...car,
@@ -34,25 +25,57 @@ export const App: React.FC = () => {
     };
   });
 
-  const handleBrand = (event: ChangeEvent<HTMLInputElement>): void => {
-    setCarBrand(event.currentTarget.value)
+  const [query, setQuery] = useState('');
+
+  let visibleCars = [...carWithColors];
+
+  if (query) {
+    const lowerQuery = query.toLocaleLowerCase();
+
+    visibleCars = carWithColors
+      .filter(({ brand }) => brand.toLocaleLowerCase().includes(lowerQuery));
+  }
+
+  const handleQueryChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
+    setQuery(event.target.value);
   };
 
-  const [carBrand, setCarBrand] = useState(cars);
+  const [selectedColor, setSelectedColor] = useState(0);
+
+  if (selectedColor) {
+    visibleCars = carWithColors
+      .filter(({ color }) => color?.id === selectedColor);
+  }
+
+  const handleColorChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ): void => {
+    setSelectedColor(+event.target.value);
+  };
 
   return (
     <div>
       <input
         type="search"
         placeholder="Find by car brand"
-        value={carBrand}
-        onChange={handleBrand}
+        value={query}
+        onChange={handleQueryChange}
       />
 
-      <select>
-        <option disabled>Chose a color</option>
-        {Object.values(ColorsName).map(color => (
-          <option value="">{color}</option>
+      <select
+        value={selectedColor}
+        onChange={handleColorChange}
+      >
+        <option>Chose a color</option>
+        {colorsFromServer.map(({ name, id }) => (
+          <option
+            key={id}
+            value={id}
+          >
+            {name}
+          </option>
         ))}
       </select>
 
@@ -66,14 +89,17 @@ export const App: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {carsWithColor.map(car => (
-            <tr key={car.id}>
-              <td>{car.id}</td>
-              <td>{car.brand}</td>
-              <td style={{ color: `${car.color?.name}` }}>
-                {car.color?.name}
-              </td>
-              <td>{car.rentPrice}</td>
+          {visibleCars.map(({
+            id,
+            brand,
+            rentPrice,
+            color,
+          }) => (
+            <tr key={id}>
+              <td>{id}</td>
+              <td>{brand}</td>
+              <td style={{ color: `${color?.name}` }}>{color?.name}</td>
+              <td>{rentPrice}</td>
             </tr>
           ))}
         </tbody>
